@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import AuthButton from "./components/AuthButton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,14 +27,20 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <body>
     <nav
         style={{
-          padding: 16,
-          borderBottom: "1px solid #ddd",
-          display: "flex",
-          gap: 16,
+            padding: 16,
+            borderBottom: "1px solid #ddd",
+            display: "flex",
+            gap: 16,
+            alignItems: "center",
         }}
     >
-      <a href="/">Home</a>
-      <a href="/spots">NYC Spots</a>
+        <a href="/">Home</a>
+        <a href="/spots">NYC Spots</a>
+        <a href="/profile">Profile</a>
+        <a href="/members">Members</a>
+        <span style={{ marginLeft: "auto" }}>
+            <AuthButton />
+        </span>
     </nav>
     {children}
     </body>
