@@ -17,30 +17,10 @@ export default function AuthButton() {
   }, []);
 
   async function signIn() {
-    // Raw nonce goes to Supabase; its SHA-256 hash goes to Google.
-    const rawNonce = crypto.randomUUID();
-    const digest = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(rawNonce)
-    );
-    const hashedNonce = Array.from(new Uint8Array(digest))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-    const state = crypto.randomUUID();
-
-    sessionStorage.setItem("oauth_nonce", rawNonce);
-    sessionStorage.setItem("oauth_state", state);
-
-    const params = new URLSearchParams({
-      client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
-      redirect_uri: `${window.location.origin}/auth/callback`,
-      response_type: "id_token",
-      scope: "openid email profile",
-      nonce: hashedNonce,
-      state,
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
-
-    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
   }
 
   async function signOut() {
@@ -50,16 +30,16 @@ export default function AuthButton() {
 
   if (user) {
     return (
-      <button onClick={signOut} style={btn}>
-        Sign out ({user.email})
-      </button>
+        <button onClick={signOut} style={btn}>
+          Sign out ({user.email})
+        </button>
     );
   }
 
   return (
-    <button onClick={signIn} style={btn}>
-      Sign in with Google
-    </button>
+      <button onClick={signIn} style={btn}>
+        Sign in with Google
+      </button>
   );
 }
 
