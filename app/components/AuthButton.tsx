@@ -7,9 +7,13 @@ import type { User } from "@supabase/supabase-js";
 export default function AuthButton() {
   const supabase = createClient();
   const [user, setUser] = useState<User | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+      setLoaded(true);
+    });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user ?? null);
     });
@@ -25,29 +29,33 @@ export default function AuthButton() {
 
   async function signOut() {
     await supabase.auth.signOut();
-    window.location.href = "/";
+    window.location.href = "/login";
   }
 
+  if (!loaded) return null;
+
   if (user) {
+    const meta = user.user_metadata ?? {};
+    const name = meta.full_name ?? meta.name ?? user.email;
+    const avatar = meta.avatar_url ?? meta.picture;
+
     return (
-        <button onClick={signOut} style={btn}>
-          Sign out ({user.email})
-        </button>
+        <div className="user-chip">
+          {avatar && <img src={avatar} alt="" referrerPolicy="no-referrer" />}
+          <div className="user-text">
+            <div className="user-name">{name}</div>
+            <div className="user-status">Signed in with Google</div>
+          </div>
+          <button onClick={signOut} className="chip-btn">
+            Sign out
+          </button>
+        </div>
     );
   }
 
   return (
-      <button onClick={signIn} style={btn}>
+      <button onClick={signIn} className="btn btn-accent btn-lg">
         Sign in with Google
       </button>
   );
 }
-
-const btn: React.CSSProperties = {
-  padding: "8px 14px",
-  borderRadius: 6,
-  border: "1px solid #ccc",
-  cursor: "pointer",
-  background: "transparent",
-  color: "inherit",
-};
