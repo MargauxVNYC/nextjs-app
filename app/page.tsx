@@ -1,198 +1,171 @@
 import { createClient } from "../lib/supabase/server";
-import Skyline from "./components/Skyline";
+import CaptionGenerator from "./components/CaptionGenerator";
+import VoteButtons from "./components/VoteButtons";
+import { VIBES, type VibeKey } from "./components/vibes";
 import { categoryStyle } from "./components/categories";
-import { pickSpotOfTheDay, todayInNYC, nycDate } from "./components/daily";
+import { pickSpotOfTheDay } from "./components/daily";
 
 export const dynamic = "force-dynamic";
 
-type Score = { generation_id: number; score: number; upvotes: number; downvotes: number };
+type SpotInfo = {
+    name: string;
+    neighborhood: string | null;
+    category: string | null;
+    image_url: string | null;
+};
 type Author = { id: string; first_name: string | null; avatar_url: string | null };
+type Post = {
+    batchId: string;
+    createdAt: string;
+    userId: string;
+    vibe: string;
+    context: string | null;
+    image: string | null;
+    isUpload: boolean;
+    spot: SpotInfo | null;
+    captions: { id: number; caption: string }[];
+};
 
-export default async function Dashboard() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export default async function Feed({
+                                       searchParams,
+                                   }: {
+    searchParams: Promise<{ sort?: string; spot?: string }>;
+}) {
+    const { sort, spot } = await searchParams;
+    const sortTop = sort === "top";
+    const supabase = await createClient();
 
-  const [{ data: spots }, { data: generations }, { data: scores }] = await Promise.all([
-    supabase.from("nyc_spots").select("*"),
-    supabase.from("generations").select("id, caption, vibe, created_at, user_id, spot_id"),
-    supabase.rpc("caption_scores"),
-  ]);
+    const [{ data: spots }, { data: generations }, { data: scores }, { data: myVotes }] =
+        await Promise.all([
+            supabase.from("nyc_spots").select("id, name").order("name"),
+            supabase
+                .from("generations")
+                .select(
+                    "id, caption, vibe, created_at, user_id, batch_id, image_url, user_context, nyc_spots(name, neighborhood, category, image_url)"
+                )
+                .order("created_at", { ascending: false })
+                .limit(300),
+            supabase.rpc("caption_scores"),
+            supabase.from("votes").select("generation_id, value"), // RLS: only my own votes
+        ]);
 
-  const spotList = spots ?? [];
-  const gens = generations ?? [];
-  const spotMap = new Map(spotList.map((s) => [s.id, s]));
+    const scoreMap = new Map<number, number>(
+        (scores ?? []).map((s: { generation_id: number; score: number }) => [s.generation_id, Number(s.score)])
+    );
+    const scoreOf = (id: number) => scoreMap.get(id) ?? 0;
+    const myVoteMap = new Map<number, number>((myVotes ?? []).map((v) => [v.generation_id, v.value]));
 
-  // Vote totals
-  const scoreMap = new Map<number, number>();
-  let totalVotes = 0;
-  for (const s of (scores ?? []) as Score[]) {
-    scoreMap.set(s.generation_id, Number(s.score));
-    totalVotes += Number(s.upvotes) + Number(s.downvotes);
-  }
-  const scoreOf = (id: number) => scoreMap.get(id) ?? 0;
-  const byScore = (a: { id: number }, b: { id: number }) => scoreOf(b.id) - scoreOf(a.id);
+    // Group the 3 captions from each request into one post.
+    const posts = new Map<string, Post>();
+    for (const g of generations ?? []) {
+        const spotInfo = (Array.isArray(g.nyc_spots) ? g.nyc_spots[0] : g.nyc_spots) as SpotInfo | null;
+        let post = posts.get(g.batch_id);
+        if (!post) {
+            post = {
+                batchId: g.batch_id,
+                createdAt: g.created_at,
+                userId: g.user_id,
+                vibe: g.vibe,
+                context: g.user_context,
+                image: g.image_url ?? spotInfo?.image_url ?? null,
+                isUpload: !!g.image_url,
+                spot: spotInfo,
+                captions: [],
+            };
+            posts.set(g.batch_id, post);
+        }
+        post.captions.push({ id: g.id, caption: g.caption });
+    }
 
-  // Spot of the Day + its best caption today
-  const today = todayInNYC();
-  const spotOfDay = pickSpotOfTheDay(spotList, today);
-  const todaysTop = spotOfDay
-      ? gens
-          .filter((g) => g.spot_id === spotOfDay.id && nycDate(g.created_at) === today)
-          .sort(byScore)[0]
-      : undefined;
+    const postList = [...posts.values()];
+    for (const p of postList) p.captions.sort((a, b) => scoreOf(b.id) - scoreOf(a.id));
+    const best = (p: Post) => Math.max(...p.captions.map((c) => scoreOf(c.id)));
+    if (sortTop) postList.sort((a, b) => best(b) - best(a));
 
-  // Top captions from the last 7 days
-  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const topThisWeek = gens
-      .filter((g) => new Date(g.created_at).getTime() >= weekAgo)
-      .sort(byScore)
-      .slice(0, 5);
+    const authorIds = [...new Set(postList.map((p) => p.userId))];
+    let authors: Author[] = [];
+    if (authorIds.length) {
+        const { data } = await supabase.from("profiles").select("id, first_name, avatar_url").in("id", authorIds);
+        authors = data ?? [];
+    }
+    const authorMap = new Map(authors.map((a) => [a.id, a]));
+    const featured = pickSpotOfTheDay(spots ?? []);
 
-  // Top captioners: total points across all their captions
-  const tally = new Map<string, { points: number; count: number }>();
-  for (const g of gens) {
-    const t = tally.get(g.user_id) ?? { points: 0, count: 0 };
-    t.points += scoreOf(g.id);
-    t.count += 1;
-    tally.set(g.user_id, t);
-  }
-  const topCaptioners = [...tally.entries()]
-      .sort((a, b) => b[1].points - a[1].points || b[1].count - a[1].count)
-      .slice(0, 5);
-
-  // Names and photos for everyone shown
-  const authorIds = [
-    ...new Set([
-      ...topThisWeek.map((g) => g.user_id),
-      ...topCaptioners.map(([id]) => id),
-      ...(todaysTop ? [todaysTop.user_id] : []),
-    ]),
-  ];
-  let authors: Author[] = [];
-  if (authorIds.length) {
-    const { data } = await supabase
-        .from("profiles")
-        .select("id, first_name, avatar_url")
-        .in("id", authorIds);
-    authors = data ?? [];
-  }
-  const authorMap = new Map(authors.map((a) => [a.id, a]));
-  const nameOf = (id: string) => authorMap.get(id)?.first_name ?? "Someone";
-
-  const fullName = user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? "";
-  const firstName = fullName.split(" ")[0] || "there";
-  const medal = (i: number) => ["🥇", "🥈", "🥉"][i] ?? `${i + 1}`;
-  const pts = (n: number) => `${n} ${Math.abs(n) === 1 ? "pt" : "pts"}`;
-
-  return (
-      <>
-        <section className="hero">
-          <p className="eyebrow">Dashboard</p>
-          <h1 className="title">Welcome back, {firstName}</h1>
-          <p className="muted" style={{ maxWidth: 480, margin: "0 0 20px" }}>
-            A new spot drops every day. Caption it, vote on the best, climb the board.
-          </p>
-          <a href="/captions" className="btn btn-accent">Start captioning →</a>
-          <Skyline />
-        </section>
-
-        {spotOfDay && (
-            <section className="panel sotd">
-              <div className="sotd-media">
-                {spotOfDay.image_url ? (
-                    <img src={spotOfDay.image_url} alt={spotOfDay.name} />
-                ) : (
-                    categoryStyle(spotOfDay.category).icon
-                )}
-              </div>
-              <div className="sotd-body">
-                <span className="sotd-badge">🌟 Spot of the Day</span>
-                <h2 className="title" style={{ fontSize: 28, margin: 0 }}>{spotOfDay.name}</h2>
-                <p className="soft" style={{ margin: 0 }}>
-                  📍 {spotOfDay.neighborhood} · {spotOfDay.category}
-                </p>
-
-                {todaysTop ? (
-                    <>
-                      <p className="field-label" style={{ margin: "8px 0 0" }}>Today&apos;s top caption</p>
-                      <p className="quote">{todaysTop.caption}</p>
-                      <p className="soft" style={{ margin: 0, fontSize: 13 }}>
-                        by {nameOf(todaysTop.user_id)} · {pts(scoreOf(todaysTop.id))}
-                      </p>
-                    </>
-                ) : (
-                    <p className="muted" style={{ margin: "8px 0" }}>
-                      No captions yet today. Be the first to caption it.
+    return (
+        <>
+            <div className="feed-header">
+                <div>
+                    <p className="eyebrow">Caption the City</p>
+                    <h1 className="title">The Feed</h1>
+                    <p className="muted" style={{ margin: 0 }}>
+                        Post a photo from your week in NYC, let the AI caption it, vote on the best line.
                     </p>
-                )}
-
-                <a href={`/captions?spot=${spotOfDay.id}`} className="btn btn-accent" style={{ alignSelf: "flex-start" }}>
-                  Caption it →
-                </a>
-              </div>
-            </section>
-        )}
-
-        <div className="stats">
-          <div className="panel">
-            <div className="stat-value">{spotList.length}</div>
-            <div className="stat-label">Spots</div>
-          </div>
-          <div className="panel">
-            <div className="stat-value">{gens.length}</div>
-            <div className="stat-label">Captions</div>
-          </div>
-          <div className="panel">
-            <div className="stat-value">{totalVotes}</div>
-            <div className="stat-label">Votes cast</div>
-          </div>
-        </div>
-
-        <div className="two-col">
-          <div className="panel">
-            <h2 className="panel-title">🔥 Top captions this week</h2>
-            {topThisWeek.length === 0 && <p className="empty">No captions this week yet.</p>}
-            {topThisWeek.map((g, i) => (
-                <div key={g.id} className="rank-row">
-                  <span className="rank">{medal(i)}</span>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 600 }}>{g.caption}</div>
-                    <div className="soft" style={{ fontSize: 13 }}>
-                      {spotMap.get(g.spot_id)?.name} · by {nameOf(g.user_id)}
-                    </div>
-                  </div>
-                  <span className="rank-score">{scoreOf(g.id)}</span>
                 </div>
-            ))}
-          </div>
+                <div className="tabs">
+                    <a href="/" className={`tab${!sortTop ? " active" : ""}`}>🆕 New</a>
+                    <a href="/?sort=top" className={`tab${sortTop ? " active" : ""}`}>🔥 Top</a>
+                </div>
+            </div>
 
-          <div className="panel">
-            <h2 className="panel-title">🏆 Top captioners</h2>
-            {topCaptioners.length === 0 && <p className="empty">Nobody on the board yet.</p>}
-            {topCaptioners.map(([id, t], i) => {
-              const author = authorMap.get(id);
-              return (
-                  <div key={id} className="rank-row">
-                    <span className="rank">{medal(i)}</span>
-                    {author?.avatar_url ? (
-                        <img src={author.avatar_url} alt="" className="rank-avatar" referrerPolicy="no-referrer" />
-                    ) : (
-                        <span className="rank-avatar" />
+            <div className="home-layout">
+                <div className="feed">
+                    {postList.length === 0 && (
+                        <div className="panel muted">No posts yet. Upload a photo to start the feed!</div>
                     )}
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{nameOf(id)}</div>
-                      <div className="soft" style={{ fontSize: 13 }}>
-                        {t.count} caption{t.count === 1 ? "" : "s"}
-                      </div>
-                    </div>
-                    <span className="rank-score">{pts(t.points)}</span>
-                  </div>
-              );
-            })}
-          </div>
-        </div>
-      </>
-  );
+
+                    {postList.map((p) => {
+                        const author = authorMap.get(p.userId);
+                        const vibe = VIBES[p.vibe as VibeKey];
+                        const leaderId = best(p) > 0 ? p.captions[0].id : null;
+
+                        return (
+                            <article key={p.batchId} className="panel post">
+                                <header className="post-head">
+                                    {author?.avatar_url && <img src={author.avatar_url} alt="" referrerPolicy="no-referrer" />}
+                                    <span className="post-author">{author?.first_name ?? "Someone"}</span>
+                                    <span>
+                    {new Date(p.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </span>
+                                    <span className="chip">{p.isUpload ? "📸 Original photo" : `📍 ${p.spot?.name ?? "Spot"}`}</span>
+                                    {vibe && <span className="chip">{vibe.emoji} {vibe.label}</span>}
+                                </header>
+
+                                {p.image ? (
+                                    <img src={p.image} alt="" className="post-image" />
+                                ) : (
+                                    <div className="post-image post-image-empty">{categoryStyle(p.spot?.category).icon}</div>
+                                )}
+
+                                {p.context && <p className="post-context">&ldquo;{p.context}&rdquo;</p>}
+
+                                <ol className="caption-list">
+                                    {p.captions.map((c) => (
+                                        <li key={c.id} className={`caption-row${c.id === leaderId ? " leader" : ""}`}>
+                                            {c.id === leaderId && <span className="crown">👑</span>}
+                                            <p className="caption-line">{c.caption}</p>
+                                            <VoteButtons
+                                                generationId={c.id}
+                                                initialScore={scoreOf(c.id)}
+                                                initialVote={(myVoteMap.get(c.id) ?? 0) as 1 | -1 | 0}
+                                                layout="row"
+                                            />
+                                        </li>
+                                    ))}
+                                </ol>
+                            </article>
+                        );
+                    })}
+                </div>
+
+                <aside>
+                    <CaptionGenerator
+                        spots={spots ?? []}
+                        initialSpotId={Number(spot) || featured?.id}
+                        featuredSpotId={featured?.id}
+                        initialMode={spot ? "spot" : "photo"}
+                    />
+                </aside>
+            </div>
+        </>
+    );
 }

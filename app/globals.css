@@ -337,3 +337,49 @@ img { display: block; max-width: 100%; }
   .sotd { grid-template-columns: 1fr; }
   .sotd-media { min-height: 200px; }
 }
+
+/* ---------- Feed (home) ---------- */
+.feed-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.home-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; margin-top: 20px; }
+
+.post { padding: 0; overflow: hidden; }
+.post-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 14px 18px; font-size: 13px; color: var(--soft); }
+.post-head img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+.post-author { color: var(--text); font-weight: 700; font-size: 14px; }
+.chip { padding: 3px 10px; border-radius: 999px; background: #ffffff0d; border: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+
+.post-image { width: 100%; max-height: 520px; object-fit: cover; display: block; background: #000; }
+.post-image-empty { height: 220px; display: grid; place-items: center; font-size: 64px; background: linear-gradient(135deg, #fbbf2422, #fb718522); }
+.post-context { margin: 14px 18px 0; color: var(--muted); font-style: italic; font-size: 14px; }
+
+.caption-list { list-style: none; margin: 0; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.caption-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: #ffffff06; border: 1px solid transparent; }
+.caption-row.leader { border-color: var(--border-strong); background: linear-gradient(90deg, #fbbf2414, transparent); }
+.caption-line { margin: 0; flex: 1; font-size: 17px; font-weight: 600; line-height: 1.4; }
+.crown { font-size: 18px; }
+
+.vote.row { flex-direction: row; gap: 6px; }
+.vote.row .vote-btn { width: 32px; height: 32px; }
+
+/* Composer */
+.dropzone {
+  display: grid; place-items: center; text-align: center; min-height: 160px;
+  border: 1.5px dashed var(--border-strong); border-radius: 16px; cursor: pointer;
+  color: var(--soft); background: #ffffff05; overflow: hidden; font-size: 14px; line-height: 1.6;
+}
+.dropzone img { width: 100%; max-height: 240px; object-fit: cover; }
+textarea.select { resize: vertical; font-family: inherit; }
+button.tab { border: none; background: transparent; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; }
+.status-text { color: var(--soft); font-size: 13px; margin: 12px 0 0; }
+
+@media (max-width: 900px) {
+  .home-layout { grid-template-columns: 1fr; }
+  .home-layout aside { order: -1; }
+  .caption-line { font-size: 15px; }
+}
+
+/* ---------- Privacy page ---------- */
+.privacy { margin-top: 20px; line-height: 1.65; color: var(--muted); }
+.privacy h2 { font-size: 17px; color: var(--text); margin: 24px 0 8px; }
+.privacy ul { margin: 0; padding-left: 20px; }
+.privacy li { margin-bottom: 6px; }

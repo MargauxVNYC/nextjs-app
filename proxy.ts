@@ -30,7 +30,8 @@ export async function proxy(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     const path = request.nextUrl.pathname;
-    const isPublic = path.startsWith("/login") || path.startsWith("/auth");
+    const isPublic =
+        path.startsWith("/login") || path.startsWith("/auth") || path.startsWith("/privacy");
 
     // Not logged in: every page except /login and /auth/* goes to /login.
     if (!user && !isPublic) {

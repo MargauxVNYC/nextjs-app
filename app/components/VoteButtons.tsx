@@ -7,10 +7,12 @@ export default function VoteButtons({
                                         generationId,
                                         initialScore,
                                         initialVote,
+                                        layout = "column",
                                     }: {
     generationId: number;
     initialScore: number;
     initialVote: 1 | -1 | 0;
+    layout?: "column" | "row";
 }) {
     const supabase = createClient();
     const [vote, setVote] = useState<1 | -1 | 0>(initialVote);
@@ -49,7 +51,7 @@ export default function VoteButtons({
     }
 
     return (
-        <div className="vote">
+        <div className={`vote${layout === "row" ? " row" : ""}`}>
             <button
                 className={`vote-btn up${vote === 1 ? " active" : ""}`}
                 onClick={() => cast(1)}

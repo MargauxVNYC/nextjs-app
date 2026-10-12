@@ -24,6 +24,9 @@ export default function LoginPage() {
                         Your Google account is your profile. No extra setup needed.
                     </p>
                     <AuthButton />
+                    <p className="soft" style={{ fontSize: 12, margin: "16px 0 0" }}>
+                        By signing in you agree to our <a href="/privacy" style={{ color: "var(--accent)" }}>Privacy Policy</a>.
+                    </p>
                 </div>
             </section>
         </main>
