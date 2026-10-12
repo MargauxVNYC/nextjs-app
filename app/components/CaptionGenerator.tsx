@@ -52,6 +52,7 @@ export default function CaptionGenerator({
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState("");
     const [error, setError] = useState("");
+    const [expanded, setExpanded] = useState(false); // mobile: composer open/closed
 
     function pickFile(e: React.ChangeEvent<HTMLInputElement>) {
         const f = e.target.files?.[0];
@@ -64,6 +65,18 @@ export default function CaptionGenerator({
     async function generate() {
         setError("");
         setLoading(true);
+        setExpanded(false);
+
+        // Show the shimmering placeholder post in the feed.
+        window.dispatchEvent(
+            new CustomEvent("nycspots:pending", {
+                detail: {
+                    preview: mode === "photo" ? preview : null,
+                    label: mode === "photo" ? "The AI is studying your photo…" : "Writing captions…",
+                },
+            })
+        );
+
         try {
             let imagePath: string | undefined;
 
@@ -96,13 +109,16 @@ export default function CaptionGenerator({
             const data = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
 
-            // Reset and show the new post at the top of the feed.
+            // Reset the form, then swap the placeholder for the real post.
             setFile(null);
             setPreview(null);
             setContext("");
             if (inputRef.current) inputRef.current.value = "";
+            window.dispatchEvent(new CustomEvent("nycspots:done", { detail: { batchId: data.batchId } }));
             router.refresh();
         } catch (e) {
+            window.dispatchEvent(new CustomEvent("nycspots:done", { detail: {} }));
+            setExpanded(true); // reopen on mobile so the error is visible
             setError(e instanceof Error ? e.message : "Something went wrong.");
         } finally {
             setLoading(false);
@@ -112,90 +128,111 @@ export default function CaptionGenerator({
 
     return (
         <div className="panel generator">
-            <h2 className="panel-title">✨ New post</h2>
-
-            <div className="tabs" style={{ marginBottom: 14 }}>
-                <button type="button" className={`tab${mode === "photo" ? " active" : ""}`} onClick={() => setMode("photo")}>
-                    📸 Your photo
-                </button>
-                <button type="button" className={`tab${mode === "spot" ? " active" : ""}`} onClick={() => setMode("spot")}>
-                    📍 A spot
-                </button>
-            </div>
-
-            {mode === "photo" ? (
-                <>
-                    <label className="dropzone">
-                        {preview ? (
-                            <img src={preview} alt="Your photo" />
-                        ) : (
-                            <span>
-                📸
-                <br />
-                Choose a photo from your week in NYC
-              </span>
-                        )}
-                        <input
-                            ref={inputRef}
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            onChange={pickFile}
-                            hidden
-                        />
-                    </label>
-
-                    <label className="field-label">What&apos;s the story? (optional)</label>
-                    <textarea
-                        className="select"
-                        rows={2}
-                        maxLength={200}
-                        placeholder="e.g. my first real bagel, 40 min line"
-                        value={context}
-                        onChange={(e) => setContext(e.target.value)}
-                    />
-                </>
-            ) : (
-                <>
-                    <label className="field-label">Spot</label>
-                    <select className="select" value={spotId} onChange={(e) => setSpotId(Number(e.target.value))}>
-                        {spots.map((s) => (
-                            <option key={s.id} value={s.id}>
-                                {s.id === featuredSpotId ? "🌟 " : ""}
-                                {s.name}
-                            </option>
-                        ))}
-                    </select>
-                    {spotId === featuredSpotId && (
-                        <p className="soft" style={{ fontSize: 13, margin: "8px 0 0" }}>
-                            🌟 Today&apos;s Spot of the Day
-                        </p>
-                    )}
-                </>
-            )}
-
-            <label className="field-label">Vibe</label>
-            <div className="vibe-picker">
-                {(Object.keys(VIBES) as VibeKey[]).map((key) => (
-                    <button
-                        key={key}
-                        type="button"
-                        onClick={() => setVibe(key)}
-                        className={`vibe-chip${vibe === key ? " active" : ""}`}
-                    >
-                        {VIBES[key].emoji} {VIBES[key].label}
-                    </button>
-                ))}
-            </div>
-
+            <h2 className="panel-title desktop-only">✨ New post</h2>
             <button
-                className="btn btn-accent btn-lg"
-                onClick={generate}
-                disabled={loading || (mode === "photo" ? !file : !spotId)}
+                type="button"
+                className="btn btn-accent btn-lg mobile-only"
+                onClick={() => setExpanded((v) => !v)}
             >
-                {loading ? "Working…" : "Generate 3 captions"}
+                {expanded ? "✕ Close" : "＋ New post"}
             </button>
-            {status && <p className="status-text">{status}</p>}
-            {error && <p className="error-text">{error}</p>}
+
+            <div className={`composer-body${expanded ? " open" : ""}`}>
+                <div className="tabs" style={{ marginBottom: 14 }}>
+                    <button
+                        type="button"
+                        className={`tab${mode === "photo" ? " active" : ""}`}
+                        onClick={() => setMode("photo")}
+                    >
+                        📸 Your photo
+                    </button>
+                    <button
+                        type="button"
+                        className={`tab${mode === "spot" ? " active" : ""}`}
+                        onClick={() => setMode("spot")}
+                    >
+                        📍 A spot
+                    </button>
+                </div>
+
+                {mode === "photo" ? (
+                    <>
+                        <label className="dropzone">
+                            {preview ? (
+                                <img src={preview} alt="Your photo" />
+                            ) : (
+                                <span>
+                  📸
+                  <br />
+                  Choose a photo from your week in NYC
+                </span>
+                            )}
+                            <input
+                                ref={inputRef}
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                onChange={pickFile}
+                                hidden
+                            />
+                        </label>
+
+                        <label className="field-label">What&apos;s the story? (optional)</label>
+                        <textarea
+                            className="select"
+                            rows={2}
+                            maxLength={200}
+                            placeholder="e.g. my first real bagel, 40 min line"
+                            value={context}
+                            onChange={(e) => setContext(e.target.value)}
+                        />
+                    </>
+                ) : (
+                    <>
+                        <label className="field-label">Spot</label>
+                        <select
+                            className="select"
+                            value={spotId}
+                            onChange={(e) => setSpotId(Number(e.target.value))}
+                        >
+                            {spots.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                    {s.id === featuredSpotId ? "🌟 " : ""}
+                                    {s.name}
+                                </option>
+                            ))}
+                        </select>
+                        {spotId === featuredSpotId && (
+                            <p className="soft" style={{ fontSize: 13, margin: "8px 0 0" }}>
+                                🌟 Today&apos;s Spot of the Day
+                            </p>
+                        )}
+                    </>
+                )}
+
+                <label className="field-label">Vibe</label>
+                <div className="vibe-picker">
+                    {(Object.keys(VIBES) as VibeKey[]).map((key) => (
+                        <button
+                            key={key}
+                            type="button"
+                            onClick={() => setVibe(key)}
+                            className={`vibe-chip${vibe === key ? " active" : ""}`}
+                        >
+                            {VIBES[key].emoji} {VIBES[key].label}
+                        </button>
+                    ))}
+                </div>
+
+                <button
+                    className="btn btn-accent btn-lg"
+                    onClick={generate}
+                    disabled={loading || (mode === "photo" ? !file : !spotId)}
+                >
+                    {loading ? "Working…" : "Generate 3 captions"}
+                </button>
+                {status && <p className="status-text">{status}</p>}
+                {error && <p className="error-text">{error}</p>}
+            </div>
         </div>
     );
 }

@@ -383,3 +383,28 @@ button.tab { border: none; background: transparent; cursor: pointer; font: inher
 .privacy h2 { font-size: 17px; color: var(--text); margin: 24px 0 8px; }
 .privacy ul { margin: 0; padding-left: 20px; }
 .privacy li { margin-bottom: 6px; }
+
+/* ---------- Pending post & delete ---------- */
+.post { scroll-margin-top: 80px; }
+.pending { border-color: var(--border-strong); }
+.pending .post-image { opacity: .55; }
+
+.shimmer, .skeleton-line {
+  background: linear-gradient(90deg, #ffffff0a 25%, #ffffff1f 50%, #ffffff0a 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+.skeleton-line { display: block; height: 16px; border-radius: 8px; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+.just-posted { animation: glow 2.5s ease-out; }
+@keyframes glow {
+  0%   { box-shadow: 0 0 0 2px var(--accent), 0 0 40px #fbbf2466; }
+  100% { box-shadow: none; }
+}
+
+.post-delete {
+  margin-left: auto; border: none; background: transparent; cursor: pointer;
+  color: var(--soft); font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px;
+}
+.post-delete:hover { background: #fb718526; color: var(--accent-2); }

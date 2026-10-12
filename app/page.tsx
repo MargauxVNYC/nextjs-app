@@ -4,6 +4,8 @@ import VoteButtons from "./components/VoteButtons";
 import { VIBES, type VibeKey } from "./components/vibes";
 import { categoryStyle } from "./components/categories";
 import { pickSpotOfTheDay } from "./components/daily";
+import PendingPost from "./components/PendingPost";
+import DeletePostButton from "./components/DeletePostButton";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +36,10 @@ export default async function Feed({
     const { sort, spot } = await searchParams;
     const sortTop = sort === "top";
     const supabase = await createClient();
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
 
     const [{ data: spots }, { data: generations }, { data: scores }, { data: myVotes }] =
         await Promise.all([
@@ -93,7 +99,8 @@ export default async function Feed({
 
     return (
         <>
-            <div className="feed-header">
+            <div className="feed">
+                <PendingPost />
                 <div>
                     <p className="eyebrow">Caption the City</p>
                     <h1 className="title">The Feed</h1>
@@ -119,7 +126,7 @@ export default async function Feed({
                         const leaderId = best(p) > 0 ? p.captions[0].id : null;
 
                         return (
-                            <article key={p.batchId} className="panel post">
+                            <article key={p.batchId} id={`post-${p.batchId}`} className="panel post">
                                 <header className="post-head">
                                     {author?.avatar_url && <img src={author.avatar_url} alt="" referrerPolicy="no-referrer" />}
                                     <span className="post-author">{author?.first_name ?? "Someone"}</span>
@@ -128,6 +135,9 @@ export default async function Feed({
                   </span>
                                     <span className="chip">{p.isUpload ? "📸 Original photo" : `📍 ${p.spot?.name ?? "Spot"}`}</span>
                                     {vibe && <span className="chip">{vibe.emoji} {vibe.label}</span>}
+                                    {p.userId === user?.id && (
+                                        <DeletePostButton batchId={p.batchId} imageUrl={p.isUpload ? p.image : null} />
+                                    )}
                                 </header>
 
                                 {p.image ? (
