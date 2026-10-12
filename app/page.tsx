@@ -7,7 +7,10 @@ import { pickSpotOfTheDay } from "./components/daily";
 import PendingPost from "./components/PendingPost";
 import DeletePostButton from "./components/DeletePostButton";
 
+export const metadata = { title: "Feed · NYC Spots" };
+
 export const dynamic = "force-dynamic";
+
 
 type SpotInfo = {
     name: string;

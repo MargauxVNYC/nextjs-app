@@ -3,6 +3,8 @@ import Skyline from "../components/Skyline";
 import { categoryStyle } from "../components/categories";
 import { pickSpotOfTheDay, todayInNYC, nycDate } from "../components/daily";
 
+export const metadata = { title: "Dashboard · NYC Spots" };
+
 export const dynamic = "force-dynamic";
 
 type Score = { generation_id: number; score: number; upvotes: number; downvotes: number };

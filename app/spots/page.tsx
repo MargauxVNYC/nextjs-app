@@ -1,6 +1,7 @@
 import { createClient } from "../../lib/supabase/server";
 import { categoryStyle } from "../components/categories";
 
+export const metadata = { title: "Spots · NYC Spots" };
 export const dynamic = "force-dynamic";
 
 export default async function SpotsPage() {

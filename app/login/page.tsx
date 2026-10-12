@@ -1,6 +1,8 @@
 import AuthButton from "../components/AuthButton";
 import Skyline from "../components/Skyline";
 
+export const metadata = { title: "Sign in · NYC Spots" };
+
 export default function LoginPage() {
     return (
         <main className="login">
