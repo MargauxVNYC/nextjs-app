@@ -130,8 +130,8 @@ export default async function Dashboard() {
                     </p>
                 )}
 
-                <a href={`/?spot=${spotOfDay.id}`} className="btn btn-accent" style={{ alignSelf: "flex-start" }}>
-                  Caption it →
+                <a href={`/?spot=${spotOfDay.id}&auto=1`} className="btn btn-accent" style={{ alignSelf: "flex-start" }}>
+                  ✨ Caption it now
                 </a>
               </div>
             </section>

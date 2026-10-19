@@ -408,3 +408,126 @@ button.tab { border: none; background: transparent; cursor: pointer; font: inher
   color: var(--soft); font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px;
 }
 .post-delete:hover { background: #fb718526; color: var(--accent-2); }
+
+/* =========================================================
+   Layout v2: narrower sidebar, bigger sticky composer,
+   How it works, filters. (Keep this block LAST in the file.)
+   ========================================================= */
+
+/* ---- Narrower sidebar, wider content ---- */
+.shell { grid-template-columns: 200px 1fr; }
+.sidebar { padding: 20px 12px; gap: 24px; }
+.brand { font-size: 16px; gap: 8px; }
+.brand-mark { width: 32px; height: 32px; border-radius: 10px; font-size: 10px; }
+.side-link { padding: 9px 10px; font-size: 14px; gap: 10px; }
+.content { max-width: 1320px; padding: 28px 32px; }
+
+/* ---- Feed + composer columns ---- */
+.home-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 440px;
+  gap: 28px;
+  align-items: start;
+  margin-top: 24px;
+}
+
+/* The composer column stays on screen while the feed scrolls */
+.home-layout > aside {
+  position: sticky;
+  top: 88px;
+  align-self: start;
+  max-height: calc(100vh - 104px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.generator { position: static; padding: 24px; }
+.generator .dropzone { min-height: 220px; }
+.generator .dropzone img { max-height: 300px; }
+
+/* ---- Show the right composer header on each screen size ---- */
+.mobile-only { display: none !important; }
+.desktop-only { display: block; }
+
+/* ---- How it works ---- */
+.how {
+  margin-top: 24px; padding: 22px 24px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background:
+          radial-gradient(circle at 0% 0%, #fbbf241f, transparent 50%),
+          radial-gradient(circle at 100% 100%, #fb71851a, transparent 50%),
+          var(--surface);
+}
+.how-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.how-title { font-size: 20px; font-weight: 800; margin: 6px 0 0; letter-spacing: -0.01em; }
+.how-close {
+  border: 1px solid var(--border); background: transparent; color: var(--muted);
+  border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 600;
+  cursor: pointer; flex-shrink: 0; transition: border-color .15s, color .15s;
+}
+.how-close:hover { border-color: var(--accent); color: var(--text); }
+
+.how-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+.how-step {
+  position: relative; display: flex; gap: 14px; align-items: flex-start;
+  padding: 16px; border-radius: 16px; background: #ffffff06; border: 1px solid var(--border);
+}
+.how-step:not(:last-child)::after {           /* arrow between steps */
+  content: "→"; position: absolute; right: -22px; top: 50%;
+  transform: translateY(-50%); color: var(--accent); font-weight: 800;
+}
+.how-icon {
+  position: relative; width: 44px; height: 44px; border-radius: 14px; flex-shrink: 0;
+  display: grid; place-items: center; font-size: 22px;
+  background: linear-gradient(135deg, #fbbf2433, #fb718533);
+}
+.how-num {
+  position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 11px; font-weight: 800;
+  color: var(--accent-contrast); background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+.how-step strong { display: block; font-size: 15px; margin-bottom: 3px; }
+.how-step p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--soft); }
+
+/* ---- Filters ---- */
+.filter-bar { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; }
+.filter-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.filter-label {
+  width: 52px; flex-shrink: 0; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .12em; color: var(--soft);
+}
+.filter-chip {
+  padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border);
+  font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.filter-chip:hover { border-color: var(--border-strong); color: var(--text); }
+.filter-chip.active { background: #fbbf2426; border-color: var(--accent); color: var(--text); }
+.filter-summary {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 10px; border-top: 1px solid var(--border); font-size: 13px; color: var(--soft);
+}
+.filter-summary a { color: var(--accent); font-weight: 600; }
+
+/* ---- Medium screens: slightly narrower composer ---- */
+@media (max-width: 1200px) {
+  .home-layout { grid-template-columns: minmax(0, 1fr) 380px; }
+}
+
+/* ---- Tablets & phones: stack everything ---- */
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; }
+  .content { padding: 20px 16px; }
+  .home-layout { grid-template-columns: 1fr; gap: 20px; }
+  .home-layout > aside { position: static; max-height: none; overflow: visible; order: -1; }
+
+  .desktop-only { display: none !important; }
+  .mobile-only { display: inline-flex !important; }
+  .composer-body { display: none; margin-top: 16px; }
+  .composer-body.open { display: block; }
+
+  .how-header { margin-bottom: 14px; }
+  .how-steps { grid-template-columns: 1fr; gap: 10px; }
+  .how-step:not(:last-child)::after { display: none; }
+  .filter-label { width: 100%; }
+}

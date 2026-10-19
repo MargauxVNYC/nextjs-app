@@ -1,16 +1,16 @@
 import { createClient } from "../lib/supabase/server";
 import CaptionGenerator from "./components/CaptionGenerator";
 import VoteButtons from "./components/VoteButtons";
-import { VIBES, type VibeKey } from "./components/vibes";
-import { categoryStyle } from "./components/categories";
-import { pickSpotOfTheDay } from "./components/daily";
+import HowItWorks from "./components/HowItWorks";
 import PendingPost from "./components/PendingPost";
 import DeletePostButton from "./components/DeletePostButton";
-
-export const metadata = { title: "Feed · NYC Spots" };
+import { VIBES, type VibeKey } from "./components/vibes";
+import { categoryStyle } from "./components/categories";
+import { pickSpotOfTheDay, todayInNYC, nycDate } from "./components/daily";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
-
+export const metadata: Metadata = { title: "Feed · NYC Spots" };
 
 type SpotInfo = {
     name: string;
@@ -30,16 +30,21 @@ type Post = {
     spot: SpotInfo | null;
     captions: { id: number; caption: string }[];
 };
+type Params = {
+    sort?: string;
+    type?: string;
+    range?: string;
+    vibe?: string;
+    spot?: string;
+    auto?: string;
+};
 
-export default async function Feed({
-                                       searchParams,
-                                   }: {
-    searchParams: Promise<{ sort?: string; spot?: string }>;
-}) {
-    const { sort, spot } = await searchParams;
+export default async function Feed({ searchParams }: { searchParams: Promise<Params> }) {
+    const params = await searchParams;
+    const { sort, type, range, vibe: vibeFilter, spot, auto } = params;
     const sortTop = sort === "top";
-    const supabase = await createClient();
 
+    const supabase = await createClient();
     const {
         data: { user },
     } = await supabase.auth.getUser();
@@ -86,10 +91,31 @@ export default async function Feed({
         post.captions.push({ id: g.id, caption: g.caption });
     }
 
-    const postList = [...posts.values()];
+    // ----- Filters -----
+    const today = todayInNYC();
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+
+    let postList = [...posts.values()];
+    if (type === "photo") postList = postList.filter((p) => p.isUpload);
+    if (type === "spot") postList = postList.filter((p) => !p.isUpload);
+    if (type === "mine") postList = postList.filter((p) => p.userId === user?.id);
+    if (range === "today") postList = postList.filter((p) => nycDate(p.createdAt) === today);
+    if (range === "week") postList = postList.filter((p) => new Date(p.createdAt).getTime() >= weekAgo);
+    if (vibeFilter && vibeFilter in VIBES) postList = postList.filter((p) => p.vibe === vibeFilter);
+
     for (const p of postList) p.captions.sort((a, b) => scoreOf(b.id) - scoreOf(a.id));
     const best = (p: Post) => Math.max(...p.captions.map((c) => scoreOf(c.id)));
     if (sortTop) postList.sort((a, b) => best(b) - best(a));
+
+    // Build a link that changes one filter and keeps the others.
+    const linkWith = (changes: Partial<Params>) => {
+        const merged = { sort, type, range, vibe: vibeFilter, ...changes };
+        const qs = new URLSearchParams(
+            Object.entries(merged).filter(([, v]) => v) as [string, string][]
+        ).toString();
+        return qs ? `/?${qs}` : "/";
+    };
+    const anyFilter = !!(type || range || vibeFilter || sortTop);
 
     const authorIds = [...new Set(postList.map((p) => p.userId))];
     let authors: Author[] = [];
@@ -100,27 +126,64 @@ export default async function Feed({
     const authorMap = new Map(authors.map((a) => [a.id, a]));
     const featured = pickSpotOfTheDay(spots ?? []);
 
+    const chip = (label: string, href: string, active: boolean) => (
+        <a key={label} href={href} className={`filter-chip${active ? " active" : ""}`}>
+            {label}
+        </a>
+    );
+
     return (
         <>
-            <div className="feed">
-                <PendingPost />
-                <div>
-                    <p className="eyebrow">Caption the City</p>
-                    <h1 className="title">The Feed</h1>
-                    <p className="muted" style={{ margin: 0 }}>
-                        Post a photo from your week in NYC, let the AI caption it, vote on the best line.
-                    </p>
-                </div>
-                <div className="tabs">
-                    <a href="/" className={`tab${!sortTop ? " active" : ""}`}>🆕 New</a>
-                    <a href="/?sort=top" className={`tab${sortTop ? " active" : ""}`}>🔥 Top</a>
-                </div>
-            </div>
+            <p className="eyebrow">Caption the City</p>
+            <h1 className="title">The Feed</h1>
+            <p className="muted" style={{ margin: 0 }}>
+                Post a photo from your week in NYC, let the AI caption it, vote on the best line.
+            </p>
+
+            <HowItWorks />
 
             <div className="home-layout">
                 <div className="feed">
+                    <section className="panel filter-bar">
+                        <div className="filter-group">
+                            <span className="filter-label">Sort</span>
+                            {chip("🆕 New", linkWith({ sort: undefined }), !sortTop)}
+                            {chip("🔥 Top", linkWith({ sort: "top" }), sortTop)}
+                        </div>
+                        <div className="filter-group">
+                            <span className="filter-label">Show</span>
+                            {chip("All", linkWith({ type: undefined }), !type)}
+                            {chip("📸 Photos", linkWith({ type: "photo" }), type === "photo")}
+                            {chip("📍 Spots", linkWith({ type: "spot" }), type === "spot")}
+                            {chip("👤 My posts", linkWith({ type: "mine" }), type === "mine")}
+                        </div>
+                        <div className="filter-group">
+                            <span className="filter-label">When</span>
+                            {chip("All time", linkWith({ range: undefined }), !range)}
+                            {chip("Today", linkWith({ range: "today" }), range === "today")}
+                            {chip("This week", linkWith({ range: "week" }), range === "week")}
+                        </div>
+                        <div className="filter-group">
+                            <span className="filter-label">Vibe</span>
+                            {chip("Any", linkWith({ vibe: undefined }), !vibeFilter)}
+                            {(Object.keys(VIBES) as VibeKey[]).map((k) =>
+                                chip(`${VIBES[k].emoji} ${VIBES[k].label}`, linkWith({ vibe: k }), vibeFilter === k)
+                            )}
+                        </div>
+                        <div className="filter-summary">
+              <span>
+                {postList.length} post{postList.length === 1 ? "" : "s"}
+              </span>
+                            {anyFilter && <a href="/">Clear filters</a>}
+                        </div>
+                    </section>
+
+                    <PendingPost />
+
                     {postList.length === 0 && (
-                        <div className="panel muted">No posts yet. Upload a photo to start the feed!</div>
+                        <div className="panel muted">
+                            {anyFilter ? "No posts match these filters." : "No posts yet. Upload a photo to start the feed!"}
+                        </div>
                     )}
 
                     {postList.map((p) => {
@@ -176,6 +239,7 @@ export default async function Feed({
                         initialSpotId={Number(spot) || featured?.id}
                         featuredSpotId={featured?.id}
                         initialMode={spot ? "spot" : "photo"}
+                        autoStart={auto === "1" && !!spot}
                     />
                 </aside>
             </div>

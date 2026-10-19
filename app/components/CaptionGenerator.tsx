@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../lib/supabase/client";
 import { VIBES, type VibeKey } from "./vibes";
@@ -32,11 +32,13 @@ export default function CaptionGenerator({
                                              initialSpotId,
                                              featuredSpotId,
                                              initialMode = "photo",
+                                             autoStart = false,
                                          }: {
     spots: { id: number; name: string }[];
     initialSpotId?: number;
     featuredSpotId?: number;
     initialMode?: "photo" | "spot";
+    autoStart?: boolean;
 }) {
     const router = useRouter();
     const supabase = createClient();
@@ -125,6 +127,16 @@ export default function CaptionGenerator({
             setStatus("");
         }
     }
+
+    // Arrived from "Caption it now" on the Dashboard: start generating right away.
+    const autoStarted = useRef(false);
+    useEffect(() => {
+        if (!autoStart || autoStarted.current) return;
+        autoStarted.current = true;
+        window.history.replaceState(null, "", "/"); // so a page refresh doesn't generate again
+        setTimeout(generate, 50);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <div className="panel generator">
