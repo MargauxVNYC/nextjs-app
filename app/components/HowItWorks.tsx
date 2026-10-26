@@ -31,16 +31,13 @@ export default function HowItWorks() {
     if (!show) return null;
 
     return (
-        <section className="how">
-            <div className="how-header">
-                <div>
-                    <p className="eyebrow">How it works</p>
-                    <h2 className="how-title">Your first caption in three steps</h2>
-                </div>
-                <button className="how-close" onClick={dismiss}>
-                    Got it ✕
-                </button>
-            </div>
+        <section className="how" aria-label="How it works">
+            <button className="how-x" onClick={dismiss} aria-label="Close instructions" title="Close">
+                ✕
+            </button>
+
+            <p className="eyebrow">How it works</p>
+            <h2 className="how-title">Your first caption in three steps</h2>
 
             <ol className="how-steps">
                 {STEPS.map((step, i) => (
@@ -56,6 +53,10 @@ export default function HowItWorks() {
                     </li>
                 ))}
             </ol>
+
+            <button className="how-dismiss" onClick={dismiss}>
+                Got it, hide this
+            </button>
         </section>
     );
 }

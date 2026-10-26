@@ -531,3 +531,43 @@ button.tab { border: none; background: transparent; cursor: pointer; font: inher
   .how-step:not(:last-child)::after { display: none; }
   .filter-label { width: 100%; }
 }
+
+/* ---------- TA feedback: clearer close + one-line filters ---------- */
+.how { position: relative; padding: 20px 24px 18px; }
+.how-title { margin: 6px 48px 16px 0; }
+.how-x {
+  position: absolute; top: 14px; right: 14px;
+  width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 15px; font-weight: 700; line-height: 1; cursor: pointer;
+  color: var(--text); background: #ffffff14; border: 1px solid var(--border);
+  transition: background .15s, border-color .15s, transform .15s;
+}
+.how-x:hover { background: #fb718533; border-color: var(--accent-2); transform: scale(1.06); }
+.how-dismiss {
+  margin-top: 14px; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--muted);
+  background: transparent; border: 1px solid var(--border);
+}
+.how-dismiss:hover { border-color: var(--accent); color: var(--text); }
+.how-header { display: none; } /* old header layout no longer used */
+
+.filter-row {
+  display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap;
+  padding: 12px 14px;
+}
+.filter-field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 130px; }
+.filter-field span {
+  font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--soft);
+}
+.filter-field .select { width: 100%; padding: 8px 10px; font-size: 13px; }
+.filter-count {
+  display: flex; align-items: center; gap: 10px; padding-bottom: 8px;
+  font-size: 13px; color: var(--soft); white-space: nowrap;
+}
+.filter-clear { color: var(--accent); font-weight: 600; }
+
+@media (max-width: 700px) {
+  .filter-field { min-width: calc(50% - 5px); flex: 1 1 calc(50% - 5px); }
+  .filter-count { width: 100%; justify-content: space-between; padding-bottom: 0; }
+}

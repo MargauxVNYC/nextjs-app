@@ -8,6 +8,7 @@ import { VIBES, type VibeKey } from "./components/vibes";
 import { categoryStyle } from "./components/categories";
 import { pickSpotOfTheDay, todayInNYC, nycDate } from "./components/daily";
 import type { Metadata } from "next";
+import FeedFilters from "./components/FeedFilters";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Feed · NYC Spots" };
@@ -157,39 +158,10 @@ export default async function Feed({ searchParams }: { searchParams: Promise<Par
 
             <div className="home-layout">
                 <div className="feed">
-                    <section className="panel filter-bar">
-                        <div className="filter-group">
-                            <span className="filter-label">Sort</span>
-                            {chip("🆕 New", linkWith({ sort: undefined }), !sortTop)}
-                            {chip("🔥 Top", linkWith({ sort: "top" }), sortTop)}
-                        </div>
-                        <div className="filter-group">
-                            <span className="filter-label">Show</span>
-                            {chip("All", linkWith({ type: undefined }), !type)}
-                            {chip("📸 Photos", linkWith({ type: "photo" }), type === "photo")}
-                            {chip("📍 Spots", linkWith({ type: "spot" }), type === "spot")}
-                            {chip("👤 My posts", linkWith({ type: "mine" }), type === "mine")}
-                        </div>
-                        <div className="filter-group">
-                            <span className="filter-label">When</span>
-                            {chip("All time", linkWith({ range: undefined }), !range)}
-                            {chip("Today", linkWith({ range: "today" }), range === "today")}
-                            {chip("This week", linkWith({ range: "week" }), range === "week")}
-                        </div>
-                        <div className="filter-group">
-                            <span className="filter-label">Vibe</span>
-                            {chip("Any", linkWith({ vibe: undefined }), !vibeFilter)}
-                            {(Object.keys(VIBES) as VibeKey[]).map((k) =>
-                                chip(`${VIBES[k].emoji} ${VIBES[k].label}`, linkWith({ vibe: k }), vibeFilter === k)
-                            )}
-                        </div>
-                        <div className="filter-summary">
-              <span>
-                {postList.length} post{postList.length === 1 ? "" : "s"}
-              </span>
-                            {anyFilter && <a href="/">Clear filters</a>}
-                        </div>
-                    </section>
+                    <FeedFilters
+                        current={{ sort, type, range, vibe: vibeFilter }}
+                        count={postList.length}
+                    />
 
                     <PendingPost />
 
