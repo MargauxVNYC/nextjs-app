@@ -33,16 +33,23 @@ export default function CaptionGenerator({
                                              featuredSpotId,
                                              initialMode = "photo",
                                              autoStart = false,
+                                             enabledVibes,
                                          }: {
     spots: { id: number; name: string }[];
     initialSpotId?: number;
     featuredSpotId?: number;
     initialMode?: "photo" | "spot";
     autoStart?: boolean;
+    enabledVibes?: string[];
 }) {
     const router = useRouter();
     const supabase = createClient();
     const inputRef = useRef<HTMLInputElement>(null);
+
+    // Only show vibes the admin has enabled in the chain mix (fall back to all).
+    const vibeKeys = (
+        enabledVibes?.length ? enabledVibes.filter((k) => k in VIBES) : Object.keys(VIBES)
+    ) as VibeKey[];
 
     const startId = spots.find((s) => s.id === initialSpotId)?.id ?? spots[0]?.id ?? 0;
     const [mode, setMode] = useState<"photo" | "spot">(initialMode);
@@ -50,7 +57,7 @@ export default function CaptionGenerator({
     const [preview, setPreview] = useState<string | null>(null);
     const [context, setContext] = useState("");
     const [spotId, setSpotId] = useState(startId);
-    const [vibe, setVibe] = useState<VibeKey>("online");
+    const [vibe, setVibe] = useState<VibeKey>(vibeKeys[0] ?? "online");
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState("");
     const [error, setError] = useState("");
@@ -223,7 +230,7 @@ export default function CaptionGenerator({
 
                 <label className="field-label">Vibe</label>
                 <div className="vibe-picker">
-                    {(Object.keys(VIBES) as VibeKey[]).map((key) => (
+                    {vibeKeys.map((key) => (
                         <button
                             key={key}
                             type="button"

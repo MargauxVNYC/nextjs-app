@@ -126,6 +126,19 @@ export default async function Feed({ searchParams }: { searchParams: Promise<Par
     const authorMap = new Map(authors.map((a) => [a.id, a]));
     const featured = pickSpotOfTheDay(spots ?? []);
 
+    // Vibes that admins have enabled in the chain mix, highest weight first
+    const { data: mixRows } = await supabase
+        .from("prompt_chain_mix")
+        .select("weight, prompt_chains(slug)")
+        .eq("is_enabled", true)
+        .order("weight", { ascending: false });
+    const enabledVibes = (mixRows ?? [])
+        .map((m) => {
+            const c = Array.isArray(m.prompt_chains) ? m.prompt_chains[0] : m.prompt_chains;
+            return (c as { slug: string } | null)?.slug;
+        })
+        .filter((s): s is string => !!s);
+
     const chip = (label: string, href: string, active: boolean) => (
         <a key={label} href={href} className={`filter-chip${active ? " active" : ""}`}>
             {label}
@@ -240,6 +253,7 @@ export default async function Feed({ searchParams }: { searchParams: Promise<Par
                         featuredSpotId={featured?.id}
                         initialMode={spot ? "spot" : "photo"}
                         autoStart={auto === "1" && !!spot}
+                        enabledVibes={enabledVibes}
                     />
                 </aside>
             </div>

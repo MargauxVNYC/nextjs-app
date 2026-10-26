@@ -31,6 +31,7 @@ export default function DeletePostButton({
         const path = imageUrl?.split("/storage/v1/object/public/uploads/")[1];
         if (path) {
             await supabase.storage.from("uploads").remove([decodeURIComponent(path)]);
+            await supabase.from("images").delete().eq("url", imageUrl!);
         }
 
         router.refresh();

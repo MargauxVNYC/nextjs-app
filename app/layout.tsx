@@ -21,11 +21,12 @@ export default async function RootLayout({
     const {
         data: { user },
     } = await supabase.auth.getUser();
+    const allowed = user ? (await supabase.rpc("is_email_allowed")).data !== false : false;
 
     return (
         <html lang="en">
         <body className={geist.variable}>
-        {user ? (
+        {user && allowed ? (
             <div className="shell">
                 <Sidebar />
                 <div className="main">
